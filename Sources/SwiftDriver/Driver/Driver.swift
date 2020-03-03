@@ -138,6 +138,9 @@ public struct Driver {
   /// Code & data for incremental compilation
   public let incrementalCompilation: IncrementalCompilation
 
+  /// Information  related to distributed builds
+  public let distributedBuildInfo: DistributedBuildInfo?
+
   /// The name of the Swift module being built.
   public let moduleName: String
 
@@ -324,6 +327,17 @@ public struct Driver {
       diagnosticEngine: diagnosticEngine,
       actualSwiftVersion: try? toolchain.swiftCompilerVersion()
     )
+
+    if parsedOptions.contains(.distributed) {
+      guard let cwd = localFileSystem.currentWorkingDirectory else {
+        fatalError("Can't get current working directory")
+      }
+      let baseDirStr = parsedOptions.getLastArgument(.distributedBuildBaseDir)?.asSingle ?? ""
+      let baseDir = AbsolutePath(baseDirStr, relativeTo: cwd)
+      self.distributedBuildInfo = DistributedBuildInfo(distributedBuildBaseDir: baseDir)
+    } else {
+      self.distributedBuildInfo = nil
+    }
 
     self.sdkPath = Self.computeSDKPath(&parsedOptions, compilerMode: compilerMode, toolchain: toolchain, diagnosticsEngine: diagnosticEngine, env: env)
 

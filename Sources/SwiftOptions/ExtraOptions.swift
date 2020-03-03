@@ -11,10 +11,16 @@
 //===----------------------------------------------------------------------===//
 extension Option {
   public static let driverPrintGraphviz: Option = Option("-driver-print-graphviz", .flag, attributes: [.helpHidden, .doesNotAffectIncrementalBuild], helpText: "Write the job graph as a graphviz file", group: .internalDebug)
+  public static let distributed: Option = Option("-distributed", .flag, attributes: [.noInteractive, .doesNotAffectIncrementalBuild], helpText: "Enable distributed building")
+  public static let distributedBuildBaseDirEQ: Option = Option("-distributed-build-base-dir=", .joined, alias: Option.distributedBuildBaseDir,  attributes: [.noInteractive, .argumentIsPath])
+  public static let distributedBuildBaseDir: Option = Option("-distributed-build-base-dir", .separate, attributes: [.noInteractive, .argumentIsPath], metaVar: "<path>", helpText: "Base directory for all source files; used for distributed building (default: current dir)")
 
   public static var extraOptions: [Option] {
     return [
-      Option.driverPrintGraphviz
+      Option.driverPrintGraphviz,
+      Option.distributed,
+      Option.distributedBuildBaseDirEQ,
+      Option.distributedBuildBaseDir
     ]
   }
 }
