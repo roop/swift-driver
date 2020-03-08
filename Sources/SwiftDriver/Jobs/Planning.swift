@@ -370,7 +370,7 @@ extension Driver {
   }
 
   /// Describes the partitions used when batching.
-  private struct BatchPartitions {
+  struct BatchPartitions {
     /// Assignment of each Swift input file to a particular partition.
     /// The values are indices into `partitions`.
     let assignment: [TypedVirtualPath : Int]
@@ -380,7 +380,7 @@ extension Driver {
   }
 
   /// Compute the partitions we'll use for batch mode.
-  private func batchPartitions(_ info: BatchModeInfo) -> BatchPartitions? {
+  func batchPartitions(_ info: BatchModeInfo) -> BatchPartitions? {
     let swiftInputFiles = inputFiles.filter { inputFile in
       inputFile.type.isPartOfSwiftCompilation
     }
