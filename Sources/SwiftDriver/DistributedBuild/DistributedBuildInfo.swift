@@ -23,6 +23,9 @@ public struct DistributedBuildInfo {
 
   typealias SwiftDepsMap = [RelativePath: TypedVirtualPath]
 
+  // An index into BuildPlan.sourceFiles; can uniquely identify a source file
+  typealias SourceFileIndex = Int
+
   public struct BuildPlan {
     // Jobs to be run locally before requesting remote compilations
     let preCompilationJobs: [Job]

@@ -43,6 +43,7 @@ extension Driver {
     var preCompilationJobs: [Job] = []
     var postCompilationJobs: [Job] = []
     var swiftDepsMap: [RelativePath: TypedVirtualPath] = [:]
+    var compilationOptions: [String]
     var remoteCompilationOutputPaths: [RelativePath: [TypedVirtualPath]] = [:]
 
     // Keep track of the various outputs we care about from the jobs we build.
@@ -165,7 +166,7 @@ extension Driver {
 
     return DistributedBuildInfo.BuildPlan(
       preCompilationJobs: preCompilationJobs,
-      sourceFiles: sourceFiles,
+      sourceFiles: sourceFiles.sorted { $0.pathString < $1.pathString },
       swiftDepsMap: swiftDepsMap,
       remoteCompilationInfo: remoteCompilationInfo,
       postCompilationJobs: postCompilationJobs)

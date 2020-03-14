@@ -14,8 +14,41 @@
 import TSCBasic
 
 extension Driver {
-  public mutating func executeDistributedBuildPlan(buildPlan: DistributedBuildInfo.BuildPlan, processSet: ProcessSet) throws {
+  private typealias DependencyMapper = DistributedBuildInfo.DependencyMapper
+  private typealias DependencyMap = DistributedBuildInfo.DependencyMap
+  private typealias BuildPlan = DistributedBuildInfo.BuildPlan
+
+  public mutating func executeDistributedBuildPlan(
+    buildPlan: DistributedBuildInfo.BuildPlan, processSet: ProcessSet) throws {
     let resolver = try ArgsResolver()
     try run(jobs: buildPlan.preCompilationJobs, resolver: resolver, processSet: processSet)
+
+    let dependencyMap = try Self.computeDependencyMapForDistributedBuild(buildPlan: buildPlan)
+    Self.printDependencyStats(buildPlan: buildPlan, dependencyMap: dependencyMap)
+  }
+
+  private static func computeDependencyMapForDistributedBuild(
+    buildPlan: BuildPlan) throws -> DependencyMap {
+    var dependencyMapper = DependencyMapper(sourceFilesCount: buildPlan.sourceFiles.count)
+    for (i, sourceFile) in buildPlan.sourceFiles.enumerated() {
+      guard let swiftDepsPath = buildPlan.swiftDepsMap[sourceFile] else { fatalError() }
+      assert(swiftDepsPath.type == .swiftDeps)
+      try dependencyMapper.loadSwiftDepsFile(path: swiftDepsPath.file, sourceFileIndex: i)
+    }
+
+    return dependencyMapper.computeDependencyMap()
+  }
+
+  private static func printDependencyStats(buildPlan: BuildPlan, dependencyMap: DependencyMap) {
+    let total = buildPlan.sourceFiles.count
+    print("Total number of files: \(total)")
+    print("Number of depedencies of:")
+    var totalDependenciesCount = 0
+    for (i, sourceFile) in buildPlan.sourceFiles.enumerated() {
+      let dependenciesCount = dependencyMap.internalDependencies[i].count
+      print("    \(sourceFile): \(dependenciesCount) (\((dependenciesCount*100)/total) %)")
+      totalDependenciesCount += dependenciesCount
+    }
+    print("Average: \((totalDependenciesCount*100)/(total*total)) %")
   }
 }
