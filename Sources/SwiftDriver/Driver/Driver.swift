@@ -329,9 +329,6 @@ public struct Driver {
     )
 
     if parsedOptions.contains(.distributed) {
-      if !self.compilerMode.usesPrimaryFileInputs {
-        fatalError("Can't build distributedly without using primary inputs")
-      }
       guard let cwd = localFileSystem.currentWorkingDirectory else {
         fatalError("Can't get current working directory")
       }

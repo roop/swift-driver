@@ -21,13 +21,26 @@ extension Driver {
       return false
     }
 
-    // We can do distributed builds only when there's an output file map
-    if outputFileMap == nil {
+    // Only compilation can be distributed as of now, not linking
+    if !inputFiles.contains(where: { $0.type.isPartOfSwiftCompilation }) {
       return false
     }
 
-    // Only compilation can be distributed as of now, not linking
-    return inputFiles.contains(where: { $0.type.isPartOfSwiftCompilation })
+    // We can do distributed builds only when using primary inputs
+    if !compilerMode.usesPrimaryFileInputs {
+      diagnosticEngine.emit(.warning_ignoring_distributed_option(
+        because: "it is not compatible with \(compilerMode)"))
+      return false
+    }
+
+    // We can do distributed builds only when there's an output file map
+    if outputFileMap == nil {
+      diagnosticEngine.emit(.warning_ignoring_distributed_option(
+        because: "it requires an output file map"))
+      return false
+    }
+
+    return true
   }
 
   private typealias RemoteCompilationInfo = DistributedBuildInfo.RemoteCompilationInfo
@@ -89,7 +102,8 @@ extension Driver {
           remoteCompilationOutputPaths[remotePath] = remoteOutputs
           addCompilerOutputsAsInputs(remoteOutputs)
         } else {
-          fatalError("Source file \(input.file) is not contained by the base dir")
+          diagnosticEngine.emit(
+            .error_source_file_outside_of_base_dir(sourceFile: input))
         }
 
         var primaryInputs: [TypedVirtualPath]
@@ -275,8 +289,6 @@ extension Driver {
           assert(swiftDepsMap[remotePath] == nil)
           swiftDepsMap[remotePath] = swiftDepsOutputPath
           swiftDepsOutputPaths.append(swiftDepsOutputPath)
-        } else {
-          fatalError("Source file \(input.file) is not contained by the base dir")
         }
       }
     }
@@ -289,5 +301,17 @@ extension Driver {
     }
 
     return swiftDepsOutputPaths
+  }
+}
+
+extension Diagnostic.Message {
+  static func warning_ignoring_distributed_option(
+    because why: String) -> Diagnostic.Message {
+    .warning("ignoring '-distributed', because \(why).\n")
+  }
+
+  static func error_source_file_outside_of_base_dir(
+    sourceFile: TypedVirtualPath) -> Diagnostic.Message {
+    .error("source file \(sourceFile.file) outside of '-distributed-build-base-dir'")
   }
 }

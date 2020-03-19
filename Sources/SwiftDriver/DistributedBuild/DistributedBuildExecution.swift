@@ -23,6 +23,8 @@ extension Driver {
     let resolver = try ArgsResolver()
     try run(jobs: buildPlan.preCompilationJobs, resolver: resolver, processSet: processSet)
 
+    if diagnosticEngine.hasErrors { return }
+
     let dependencyMap = try Self.computeDependencyMapForDistributedBuild(buildPlan: buildPlan)
     Self.printDependencyStats(buildPlan: buildPlan, dependencyMap: dependencyMap)
   }

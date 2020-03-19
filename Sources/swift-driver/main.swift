@@ -43,7 +43,9 @@ do {
   var driver = try Driver(args: arguments, diagnosticsEngine: diagnosticsEngine)
   if driver.isDistributedBuildEnabled {
     let plan = try driver.planDistributedBuild()
-    try driver.executeDistributedBuildPlan(buildPlan: plan, processSet: processSet)
+    if !driver.diagnosticEngine.hasErrors {
+      try driver.executeDistributedBuildPlan(buildPlan: plan, processSet: processSet)
+    }
   } else {
     let jobs = try driver.planBuild()
     let resolver = try ArgsResolver()
