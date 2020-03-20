@@ -26,6 +26,20 @@ extension Driver {
     if diagnosticEngine.hasErrors { return }
 
     let dependencyMap = try Self.computeDependencyMapForDistributedBuild(buildPlan: buildPlan)
+
+    #if USE_MOCK_DISTRIBUTED_BUILD
+    print("Using mock distributed build")
+    guard let distributedBuildInfo = distributedBuildInfo else { fatalError() }
+    let jobs = try planMockDistributedCompile(
+      baseDir: distributedBuildInfo.baseDir,
+      sourceFiles: buildPlan.sourceFiles,
+      dependencyMap: dependencyMap,
+      remoteCompilationInfo: buildPlan.remoteCompilationInfo)
+    try run(jobs: jobs, resolver: resolver, processSet: processSet)
+    try run(jobs: buildPlan.postCompilationJobs, resolver: resolver, processSet: processSet)
+    return
+    #endif // USE_MOCK_DISTRIBUTED_BUILD
+
     Self.printDependencyStats(buildPlan: buildPlan, dependencyMap: dependencyMap)
   }
 

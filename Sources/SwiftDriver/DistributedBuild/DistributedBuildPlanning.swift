@@ -315,3 +315,125 @@ extension Diagnostic.Message {
     .error("source file \(sourceFile.file) outside of '-distributed-build-base-dir'")
   }
 }
+
+#if USE_MOCK_DISTRIBUTED_BUILD
+
+extension Driver {
+  mutating func planMockDistributedCompile(
+    baseDir: AbsolutePath,
+    sourceFiles: [RelativePath],
+    dependencyMap: DistributedBuildInfo.DependencyMap,
+    remoteCompilationInfo: DistributedBuildInfo.RemoteCompilationInfo) throws -> [Job] {
+
+    var jobs = [Job]()
+
+    precondition(importedObjCHeader == nil) // Not handled for distributed builds
+    precondition(!shouldCreateEmitModuleJob) // Not handled for distributed builds
+    precondition(compilerMode.usesPrimaryFileInputs)
+
+    for (i, sourceFile) in sourceFiles.enumerated() {
+      let primaryInput = AbsolutePath(sourceFile.pathString, relativeTo: baseDir)
+      let secondaryInputs: [AbsolutePath] = dependencyMap.internalDependencies[i].map {
+        AbsolutePath(sourceFiles[$0].pathString, relativeTo: baseDir)
+      }
+      let jobOutputs = remoteCompilationInfo.outputs[sourceFile]!
+      let job = try mockRemoteCompilerJob(
+        primaryInputFile: primaryInput,
+        secondaryInputFiles: secondaryInputs,
+        jobOutputs: jobOutputs,
+        baseDir: baseDir)
+      jobs.append(job)
+    }
+
+    return jobs
+  }
+
+  private mutating func mockRemoteCompilerJob(
+    primaryInputFile: AbsolutePath,
+    secondaryInputFiles: [AbsolutePath],
+    jobOutputs: [TypedVirtualPath],
+    baseDir: AbsolutePath) throws -> Job {
+
+    precondition(compilerMode.usesPrimaryFileInputs)
+
+    var commandLine: [Job.ArgTemplate] = swiftCompilerPrefixArgs.map { Job.ArgTemplate.flag($0) }
+    var inputs: [TypedVirtualPath] = []
+
+    commandLine.appendFlag("-frontend")
+    commandLine.appendFlag(.c)
+
+    commandLine.appendFlag(.primaryFile)
+    commandLine.append(.path(.absolute(primaryInputFile)))
+
+    let primaryInput = TypedVirtualPath(file: .absolute(primaryInputFile), type: .swift)
+    inputs.append(primaryInput)
+
+    for secondaryInputFile in secondaryInputFiles {
+      commandLine.append(.path(.absolute(secondaryInputFile)))
+      inputs.append(TypedVirtualPath(file: .absolute(secondaryInputFile), type: .swift))
+    }
+
+    var primaryOutput: VirtualPath? = nil
+    for output in jobOutputs {
+      if output.type == compilerOutputType {
+        primaryOutput = output.file
+      }
+      switch output.type {
+      case .swiftModule:
+        commandLine.appendFlag("-emit-module-path")
+        commandLine.append(.path(output.file))
+        break
+      case .swiftDocumentation:
+        commandLine.appendFlag("-emit-module-doc-path")
+        commandLine.append(.path(output.file))
+        break
+      default:
+        break
+      }
+    }
+
+    if parsedOptions.hasArgument(.parseStdlib) {
+      commandLine.appendFlag(.disableObjcAttrRequiresFoundationModule)
+    }
+
+    try addCommonFrontendOptions(commandLine: &commandLine)
+    // FIXME: MSVC runtime flags
+
+    // We might not always be passing "main.swift" as a secondary file.
+    // If we don't pass -parse-as-library, any compilation that doesn't
+    // get "main.swift" passed as a secondary file will write a
+    // synthesized main symbol into the object file.
+    if primaryInputFile.basename != "main.swift" {
+      commandLine.appendFlag(.parseAsLibrary)
+    }
+
+    try commandLine.appendLast(.parseSil, from: &parsedOptions)
+
+    // Object file shouldn't contain any local paths
+    commandLine.appendFlags("-debug-prefix-map", "\(baseDir.pathString)=.")
+
+    // Add primary outputs.
+    if let primaryOutput = primaryOutput {
+      commandLine.appendFlag(.o)
+      commandLine.append(.path(primaryOutput))
+    }
+
+    try commandLine.appendLast(.embedBitcodeMarker, from: &parsedOptions)
+
+    try commandLine.appendLast(.disableAutolinkingRuntimeCompatibility, from: &parsedOptions)
+    try commandLine.appendLast(.runtimeCompatibilityVersion, from: &parsedOptions)
+    try commandLine.appendLast(.disableAutolinkingRuntimeCompatibilityDynamicReplacements, from: &parsedOptions)
+
+    return Job(
+      kind: .compile,
+      tool: .absolute(try toolchain.getToolPath(.swiftCompiler)),
+      commandLine: commandLine,
+      displayInputs: [primaryInput],
+      inputs: inputs,
+      outputs: jobOutputs,
+      supportsResponseFiles: true
+    )
+  }
+}
+
+#endif // USE_MOCK_DISTRIBUTED_BUILD
