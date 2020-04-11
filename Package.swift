@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
   name: "swift-driver",
   platforms: [
-    .macOS(.v10_13),
+    .macOS(.v10_15),
   ],
   products: [
     .executable(
@@ -19,6 +19,9 @@ let package = Package(
     .library(
       name: "SwiftOptions",
       targets: ["SwiftOptions"]),
+    .library(
+      name: "FlockClient",
+      targets: ["FlockClient"]),
   ],
   dependencies: [
     .package(url: "https://github.com/apple/swift-tools-support-core.git", .branch("master")),
@@ -56,6 +59,14 @@ let package = Package(
     .target(
       name: "makeOptions",
       dependencies: []),
+
+    /// Flock client
+    .target(
+      name: "FlockClient",
+      dependencies: []),
+    .testTarget(
+      name: "FlockClientTests",
+      dependencies: ["FlockClient"]),
   ],
   cxxLanguageStandard: .cxx14
 )
