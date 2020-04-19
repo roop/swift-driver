@@ -34,7 +34,7 @@ extension Driver {
       baseDir: distributedBuildInfo.baseDir,
       sourceFiles: buildPlan.sourceFiles,
       dependencyMap: dependencyMap,
-      remoteCompilationInfo: buildPlan.remoteCompilationInfo)
+      outputPaths: buildPlan.outputPaths)
     try run(jobs: jobs, resolver: resolver, processSet: processSet)
     try run(jobs: buildPlan.postCompilationJobs, resolver: resolver, processSet: processSet)
     return

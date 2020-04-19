@@ -179,14 +179,14 @@ extension Driver {
     let remoteCompilationInfo = RemoteCompilationInfo(
       compilerVersion: try getCompilerVersion(),
       sdkPlatformAndVersion: getSDKPlatformAndVersion(),
-      frontendOptions: try getCompilationFrontendOptions().joinedArguments,
-      outputs: remoteCompilationOutputPaths)
+      frontendOptions: try getCompilationFrontendOptions().joinedArguments)
 
     return DistributedBuildInfo.BuildPlan(
       preCompilationJobs: preCompilationJobs,
       sourceFiles: sourceFiles.sorted { $0.pathString < $1.pathString },
       swiftDepsMap: swiftDepsMap,
       remoteCompilationInfo: remoteCompilationInfo,
+      outputPaths: remoteCompilationOutputPaths,
       postCompilationJobs: postCompilationJobs)
   }
 
@@ -369,7 +369,7 @@ extension Driver {
     baseDir: AbsolutePath,
     sourceFiles: [RelativePath],
     dependencyMap: DistributedBuildInfo.DependencyMap,
-    remoteCompilationInfo: DistributedBuildInfo.RemoteCompilationInfo) throws -> [Job] {
+    outputPaths: [RelativePath: [TypedVirtualPath]]) throws -> [Job] {
 
     var jobs = [Job]()
 
@@ -382,7 +382,7 @@ extension Driver {
       let secondaryInputs: [AbsolutePath] = dependencyMap.internalDependencies[i].map {
         AbsolutePath(sourceFiles[$0].pathString, relativeTo: baseDir)
       }
-      let jobOutputs = remoteCompilationInfo.outputs[sourceFile]!
+      let jobOutputs = outputPaths[sourceFile]!
       let job = try mockRemoteCompilerJob(
         primaryInputFile: primaryInput,
         secondaryInputFiles: secondaryInputs,

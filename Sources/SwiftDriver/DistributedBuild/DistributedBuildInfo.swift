@@ -23,9 +23,6 @@ public struct DistributedBuildInfo {
 
     // Arguments and options that should be passed to the frontend
     let frontendOptions: String
-
-    // For an input source file, the local paths for outputs generated remotely
-    let outputs: [RelativePath: [TypedVirtualPath]]
   }
 
   typealias SwiftDepsMap = [RelativePath: TypedVirtualPath]
@@ -43,8 +40,11 @@ public struct DistributedBuildInfo {
     // Maps a source file to its local swiftDeps file
     let swiftDepsMap: SwiftDepsMap
 
-    // Info that we need for / after compiling
+    // Info that we need for remote compilation
     let remoteCompilationInfo: RemoteCompilationInfo
+
+    // For an input source file, the local paths for outputs generated remotely
+    let outputPaths: [RelativePath: [TypedVirtualPath]]
 
     // Jobs to be run locally after distributed compilation succeeds
     let postCompilationJobs: [Job]
