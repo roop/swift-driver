@@ -15,7 +15,14 @@ import TSCBasic
 
 public struct DistributedBuildInfo {
   struct RemoteCompilationInfo {
-    // FIXME: Add target, swift version, sdk version, compiler options
+    // Output of `swift --version`; Includes target information
+    let compilerVersion: String
+
+    // Identifies the SDK to use, like "MacOSX10.15"
+    let sdkPlatformAndVersion: String
+
+    // Arguments and options that should be passed to the frontend
+    let frontendOptions: String
 
     // For an input source file, the local paths for outputs generated remotely
     let outputs: [RelativePath: [TypedVirtualPath]]

@@ -176,7 +176,11 @@ extension Driver {
       }
     }
 
-    let remoteCompilationInfo = RemoteCompilationInfo(outputs: remoteCompilationOutputPaths)
+    let remoteCompilationInfo = RemoteCompilationInfo(
+      compilerVersion: try getCompilerVersion(),
+      sdkPlatformAndVersion: getSDKPlatformAndVersion(),
+      frontendOptions: try getCompilationFrontendOptions().joinedArguments,
+      outputs: remoteCompilationOutputPaths)
 
     return DistributedBuildInfo.BuildPlan(
       preCompilationJobs: preCompilationJobs,
@@ -304,6 +308,48 @@ extension Driver {
   }
 }
 
+extension Driver {
+  // Obtain the output of `swift --version`.
+  // This should match the compiler's output on the build server.
+  func getCompilerVersion() throws -> String {
+    let localCompilerPath = try toolchain.getToolPath(.swiftCompiler).pathString
+    return try Process.checkNonZeroExit(args: localCompilerPath, "--version")
+  }
+
+  // Get the SDK platform and version (like "MacOSX10.15")
+  func getSDKPlatformAndVersion() -> String {
+    if let sdkPath = sdkPath {
+      if let lastComponent = AbsolutePath(sdkPath).components.last {
+        let expectedSuffix = ".sdk"
+        if lastComponent.hasSuffix(expectedSuffix) {
+          return String(lastComponent.dropLast(expectedSuffix.count))
+        }
+      }
+    }
+    return ""
+  }
+
+  // Form the compiler options to be passed to the frontend on the build server
+  mutating func getCompilationFrontendOptions() throws -> [Job.ArgTemplate] {
+    var commandLine: [Job.ArgTemplate] = []
+
+    if parsedOptions.hasArgument(.parseStdlib) {
+      commandLine.appendFlag(.disableObjcAttrRequiresFoundationModule)
+    }
+
+    try addCommonFrontendOptions(commandLine: &commandLine)
+    // FIXME: MSVC runtime flags
+
+    try commandLine.appendLast(.parseSil, from: &parsedOptions)
+    try commandLine.appendLast(.embedBitcodeMarker, from: &parsedOptions)
+    try commandLine.appendLast(.disableAutolinkingRuntimeCompatibility, from: &parsedOptions)
+    try commandLine.appendLast(.runtimeCompatibilityVersion, from: &parsedOptions)
+    try commandLine.appendLast(.disableAutolinkingRuntimeCompatibilityDynamicReplacements, from: &parsedOptions)
+
+    return commandLine
+  }
+}
+
 extension Diagnostic.Message {
   static func warning_ignoring_distributed_option(
     because why: String) -> Diagnostic.Message {
@@ -392,12 +438,7 @@ extension Driver {
       }
     }
 
-    if parsedOptions.hasArgument(.parseStdlib) {
-      commandLine.appendFlag(.disableObjcAttrRequiresFoundationModule)
-    }
-
-    try addCommonFrontendOptions(commandLine: &commandLine)
-    // FIXME: MSVC runtime flags
+    commandLine += try getCompilationFrontendOptions()
 
     // We might not always be passing "main.swift" as a secondary file.
     // If we don't pass -parse-as-library, any compilation that doesn't
@@ -407,8 +448,6 @@ extension Driver {
       commandLine.appendFlag(.parseAsLibrary)
     }
 
-    try commandLine.appendLast(.parseSil, from: &parsedOptions)
-
     // Object file shouldn't contain any local paths
     commandLine.appendFlags("-debug-prefix-map", "\(baseDir.pathString)=.")
 
@@ -417,12 +456,6 @@ extension Driver {
       commandLine.appendFlag(.o)
       commandLine.append(.path(primaryOutput))
     }
-
-    try commandLine.appendLast(.embedBitcodeMarker, from: &parsedOptions)
-
-    try commandLine.appendLast(.disableAutolinkingRuntimeCompatibility, from: &parsedOptions)
-    try commandLine.appendLast(.runtimeCompatibilityVersion, from: &parsedOptions)
-    try commandLine.appendLast(.disableAutolinkingRuntimeCompatibilityDynamicReplacements, from: &parsedOptions)
 
     return Job(
       kind: .compile,
