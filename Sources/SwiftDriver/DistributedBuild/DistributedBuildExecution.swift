@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 import TSCBasic
+import FlockClient
 
 extension Driver {
   private typealias DependencyMapper = DistributedBuildInfo.DependencyMapper
@@ -20,6 +21,7 @@ extension Driver {
 
   public mutating func executeDistributedBuildPlan(
     buildPlan: DistributedBuildInfo.BuildPlan, processSet: ProcessSet) throws {
+    guard let distributedBuildInfo = distributedBuildInfo else { fatalError() }
     let resolver = try ArgsResolver()
     try run(jobs: buildPlan.preCompilationJobs, resolver: resolver, processSet: processSet)
 
@@ -27,9 +29,32 @@ extension Driver {
 
     let dependencyMap = try Self.computeDependencyMapForDistributedBuild(buildPlan: buildPlan)
 
-    #if USE_MOCK_DISTRIBUTED_BUILD
+    #if !USE_MOCK_DISTRIBUTED_BUILD
+
+    // Distributed build
+
+    // We don't have incremental compilation yet, so for now,
+    // we'll say all source files need to be compiled
+    let allSourceFileIndices = Set<Int>(0 ..< buildPlan.sourceFiles.count)
+
+    let compilerInputs = RemoteCompilationInputs(
+      baseDir: distributedBuildInfo.baseDir,
+      sourceFiles: buildPlan.sourceFiles,
+      primarySourceFileIndices: allSourceFileIndices,
+      secondarySourceFileIndices: dependencyMap.internalDependencies)
+
+    _ = DistributedBuildClient(
+      inputs: compilerInputs,
+      outputPaths: buildPlan.outputPaths,
+      compilationInfo: buildPlan.remoteCompilationInfo,
+      configuration: ClientConfiguration()
+    )
+
+    #else
+
+    // Mock distributed build
+
     print("Using mock distributed build")
-    guard let distributedBuildInfo = distributedBuildInfo else { fatalError() }
     let jobs = try planMockDistributedCompile(
       baseDir: distributedBuildInfo.baseDir,
       sourceFiles: buildPlan.sourceFiles,
@@ -37,10 +62,9 @@ extension Driver {
       outputPaths: buildPlan.outputPaths)
     try run(jobs: jobs, resolver: resolver, processSet: processSet)
     try run(jobs: buildPlan.postCompilationJobs, resolver: resolver, processSet: processSet)
-    return
+
     #endif // USE_MOCK_DISTRIBUTED_BUILD
 
-    Self.printDependencyStats(buildPlan: buildPlan, dependencyMap: dependencyMap)
   }
 
   private static func computeDependencyMapForDistributedBuild(

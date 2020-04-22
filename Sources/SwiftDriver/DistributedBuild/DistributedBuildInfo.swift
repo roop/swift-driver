@@ -12,19 +12,10 @@
 //===----------------------------------------------------------------------===//
 
 import TSCBasic
+import FlockClient
 
 public struct DistributedBuildInfo {
-  struct RemoteCompilationInfo {
-    // Output of `swift --version`; Includes target information
-    let compilerVersion: String
-
-    // Identifies the SDK to use, like "MacOSX10.15"
-    let sdkPlatformAndVersion: String
-
-    // Arguments and options that should be passed to the frontend
-    let frontendOptions: String
-  }
-
+  // Maps a source file to its local swiftDeps file
   typealias SwiftDepsMap = [RelativePath: TypedVirtualPath]
 
   // An index into BuildPlan.sourceFiles; can uniquely identify a source file
@@ -44,7 +35,7 @@ public struct DistributedBuildInfo {
     let remoteCompilationInfo: RemoteCompilationInfo
 
     // For an input source file, the local paths for outputs generated remotely
-    let outputPaths: [RelativePath: [TypedVirtualPath]]
+    let outputPaths: [RelativePath: RemoteCompilationOutputPathMap]
 
     // Jobs to be run locally after distributed compilation succeeds
     let postCompilationJobs: [Job]

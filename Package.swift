@@ -32,7 +32,7 @@ let package = Package(
     /// The driver library.
     .target(
       name: "SwiftDriver",
-      dependencies: ["SwiftOptions", "SwiftToolsSupport-auto", "llbuildSwift", "Yams"]),
+      dependencies: ["SwiftOptions", "SwiftToolsSupport-auto", "llbuildSwift", "Yams", "FlockClient"]),
     .testTarget(
       name: "SwiftDriverTests",
       dependencies: ["SwiftDriver", "swift-driver"]),
@@ -63,7 +63,7 @@ let package = Package(
     /// Flock client
     .target(
       name: "FlockClient",
-      dependencies: []),
+      dependencies: ["SwiftToolsSupport-auto"]),
     .testTarget(
       name: "FlockClientTests",
       dependencies: ["FlockClient"]),

@@ -13,6 +13,7 @@
 
 import TSCBasic
 import SwiftOptions
+import FlockClient
 
 /// Planning for distributed builds
 extension Driver {
@@ -43,7 +44,6 @@ extension Driver {
     return true
   }
 
-  private typealias RemoteCompilationInfo = DistributedBuildInfo.RemoteCompilationInfo
   private typealias SwiftDepsMap = DistributedBuildInfo.SwiftDepsMap
 
   public mutating func planDistributedBuild() throws -> DistributedBuildInfo.BuildPlan {
@@ -57,20 +57,24 @@ extension Driver {
     var postCompilationJobs: [Job] = []
     var swiftDepsMap: [RelativePath: TypedVirtualPath] = [:]
     var compilationOptions: [String]
-    var remoteCompilationOutputPaths: [RelativePath: [TypedVirtualPath]] = [:]
+    var remoteCompilationOutputPaths: [RelativePath: RemoteCompilationOutputPathMap] = [:]
 
     // Keep track of the various outputs we care about from the jobs we build.
     var linkerInputs: [TypedVirtualPath] = []
     var moduleInputs: [TypedVirtualPath] = []
-    func addCompilerOutputsAsInputs(_ jobOutputs: [TypedVirtualPath]) {
-      for jobOutput in jobOutputs {
-        switch jobOutput.type {
-        case .object, .autolink:
-          linkerInputs.append(jobOutput)
-
+    func addCompilerOutputsAsInputs(_ jobOutputs: RemoteCompilationOutputPathMap) {
+      for (outputType, absolutePath) in jobOutputs {
+        switch outputType {
+        case .object:
+          linkerInputs.append(
+            TypedVirtualPath(file: .absolute(absolutePath),
+                             type: .object)
+          )
         case .swiftModule:
-          moduleInputs.append(jobOutput)
-
+          moduleInputs.append(
+            TypedVirtualPath(file: .absolute(absolutePath),
+                             type: .swiftModule)
+          )
         default:
           break
         }
@@ -190,25 +194,54 @@ extension Driver {
       postCompilationJobs: postCompilationJobs)
   }
 
-  private func remoteCompilationOutputs(for input: TypedVirtualPath) -> [TypedVirtualPath] {
+  private func remoteCompilationOutputs(for input: TypedVirtualPath) -> RemoteCompilationOutputPathMap {
     precondition(compilerMode.usesPrimaryFileInputs)
     guard let outputFileMap = outputFileMap else { fatalError() }
 
-    guard input.type.isPartOfSwiftCompilation else { return [] }
-    guard let compilerOutputType = compilerOutputType else { return [] }
+    guard input.type.isPartOfSwiftCompilation else { return [:] }
+    guard let compilerOutputType = compilerOutputType else { return [:] }
 
-    let outputTypes: [FileType] = [compilerOutputType,
+    func absolutePath(from virtualPath: VirtualPath?) -> AbsolutePath? {
+      guard let virtualPath = virtualPath else { return nil }
+      switch virtualPath {
+      case .relative(let relativePath), .temporary(let relativePath):
+        guard let cwd = localFileSystem.currentWorkingDirectory else {
+          return nil
+        }
+        return AbsolutePath(relativePath.pathString, relativeTo: cwd)
+
+      case .absolute(let absolutePath):
+        return absolutePath
+
+      case .standardInput, .standardOutput:
+        return nil
+      }
+    }
+
+    let outputTypes: [FileType] = [.object,
                                    .swiftModule,
                                    .swiftDocumentation]
 
-    let outputs: [TypedVirtualPath] = outputTypes.compactMap { outputType in
-      if let path = outputFileMap.existingOutput(inputFile: input.file, outputType: outputType) {
-        return TypedVirtualPath(file: path, type: outputType)
+    var outputPathMap: RemoteCompilationOutputPathMap = [:]
+
+    for outputType in outputTypes {
+      let virtualPath = outputFileMap.existingOutput(inputFile: input.file,
+                                                     outputType: outputType)
+      if let absolutePath = absolutePath(from: virtualPath) {
+        switch outputType {
+        case .object:
+          outputPathMap[.object] = absolutePath
+        case .swiftModule:
+          outputPathMap[.swiftModule] = absolutePath
+        case .swiftDocumentation:
+          outputPathMap[.swiftDocumentation] = absolutePath
+        default:
+          break
+        }
       }
-      return nil
     }
 
-    return outputs
+    return outputPathMap
   }
 
   /// Form a job that executes the Swift frontend to emit swiftdeps files
@@ -369,7 +402,8 @@ extension Driver {
     baseDir: AbsolutePath,
     sourceFiles: [RelativePath],
     dependencyMap: DistributedBuildInfo.DependencyMap,
-    outputPaths: [RelativePath: [TypedVirtualPath]]) throws -> [Job] {
+    outputPaths: [RelativePath: RemoteCompilationOutputPathMap]
+  ) throws -> [Job] {
 
     var jobs = [Job]()
 
@@ -397,7 +431,7 @@ extension Driver {
   private mutating func mockRemoteCompilerJob(
     primaryInputFile: AbsolutePath,
     secondaryInputFiles: [AbsolutePath],
-    jobOutputs: [TypedVirtualPath],
+    jobOutputs: RemoteCompilationOutputPathMap,
     baseDir: AbsolutePath) throws -> Job {
 
     precondition(compilerMode.usesPrimaryFileInputs)
@@ -419,22 +453,25 @@ extension Driver {
       inputs.append(TypedVirtualPath(file: .absolute(secondaryInputFile), type: .swift))
     }
 
-    var primaryOutput: VirtualPath? = nil
-    for output in jobOutputs {
-      if output.type == compilerOutputType {
-        primaryOutput = output.file
-      }
-      switch output.type {
+    var jobOutputsList: [TypedVirtualPath] = []
+    for (outputType, absolutePath) in jobOutputs {
+      let path: VirtualPath = .absolute(absolutePath)
+      switch outputType {
+      case .object:
+        commandLine.appendFlag(.o)
+        commandLine.append(.path(path))
+        jobOutputsList.append(
+          TypedVirtualPath(file: path, type: .object))
       case .swiftModule:
         commandLine.appendFlag("-emit-module-path")
-        commandLine.append(.path(output.file))
-        break
+        commandLine.append(.path(path))
+        jobOutputsList.append(
+          TypedVirtualPath(file: path, type: .swiftModule))
       case .swiftDocumentation:
         commandLine.appendFlag("-emit-module-doc-path")
-        commandLine.append(.path(output.file))
-        break
-      default:
-        break
+        commandLine.append(.path(path))
+        jobOutputsList.append(
+          TypedVirtualPath(file: path, type: .swiftDocumentation))
       }
     }
 
@@ -451,19 +488,13 @@ extension Driver {
     // Object file shouldn't contain any local paths
     commandLine.appendFlags("-debug-prefix-map", "\(baseDir.pathString)=.")
 
-    // Add primary outputs.
-    if let primaryOutput = primaryOutput {
-      commandLine.appendFlag(.o)
-      commandLine.append(.path(primaryOutput))
-    }
-
     return Job(
       kind: .compile,
       tool: .absolute(try toolchain.getToolPath(.swiftCompiler)),
       commandLine: commandLine,
       displayInputs: [primaryInput],
       inputs: inputs,
-      outputs: jobOutputs,
+      outputs: jobOutputsList,
       supportsResponseFiles: true
     )
   }
