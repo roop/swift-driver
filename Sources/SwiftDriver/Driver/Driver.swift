@@ -332,9 +332,19 @@ public struct Driver {
       guard let cwd = localFileSystem.currentWorkingDirectory else {
         fatalError("Can't get current working directory")
       }
-      let baseDirStr = parsedOptions.getLastArgument(.distributedBuildBaseDir)?.asSingle ?? ""
+
+      let baseDirStr = parsedOptions.getLastArgument(
+        .distributedBuildBaseDir)?.asSingle ?? ""
       let baseDir = AbsolutePath(baseDirStr, relativeTo: cwd)
-      self.distributedBuildInfo = DistributedBuildInfo(distributedBuildBaseDir: baseDir)
+
+      let clientConfigStr = parsedOptions.getLastArgument(
+        .distributedBuildClientConfig)?.asSingle ?? "flock_client_config.yaml"
+      let clientConfigPath = AbsolutePath(clientConfigStr, relativeTo: cwd)
+
+      try self.distributedBuildInfo = DistributedBuildInfo(
+        baseDir: baseDir,
+        clientConfigPath: clientConfigPath
+      )
     } else {
       self.distributedBuildInfo = nil
     }

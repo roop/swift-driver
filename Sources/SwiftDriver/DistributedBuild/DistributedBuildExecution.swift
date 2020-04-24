@@ -47,7 +47,7 @@ extension Driver {
       inputs: compilerInputs,
       outputPaths: buildPlan.outputPaths,
       compilationInfo: buildPlan.remoteCompilationInfo,
-      configuration: ClientConfiguration()
+      configuration: distributedBuildInfo.clientConfig
     )
 
     #else

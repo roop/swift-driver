@@ -14,13 +14,17 @@ extension Option {
   public static let distributed: Option = Option("-distributed", .flag, attributes: [.noInteractive, .doesNotAffectIncrementalBuild], helpText: "Enable distributed building")
   public static let distributedBuildBaseDirEQ: Option = Option("-distributed-build-base-dir=", .joined, alias: Option.distributedBuildBaseDir,  attributes: [.noInteractive, .argumentIsPath])
   public static let distributedBuildBaseDir: Option = Option("-distributed-build-base-dir", .separate, attributes: [.noInteractive, .argumentIsPath], metaVar: "<path>", helpText: "Base directory for all source files; used for distributed building (default: current dir)")
+  public static let distributedBuildClientConfigEQ: Option = Option("-distributed-build-client-config=", .joined, alias: Option.distributedBuildClientConfig,  attributes: [.noInteractive, .argumentIsPath])
+  public static let distributedBuildClientConfig: Option = Option("-distributed-build-client-config", .separate, attributes: [.noInteractive, .argumentIsPath], metaVar: "<path>", helpText: "Distributed build client configuration file (default: ./flock_client_config.yaml)")
 
   public static var extraOptions: [Option] {
     return [
       Option.driverPrintGraphviz,
       Option.distributed,
       Option.distributedBuildBaseDirEQ,
-      Option.distributedBuildBaseDir
+      Option.distributedBuildBaseDir,
+      Option.distributedBuildClientConfigEQ,
+      Option.distributedBuildClientConfig
     ]
   }
 }

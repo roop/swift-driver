@@ -44,8 +44,12 @@ public struct DistributedBuildInfo {
   // The base directory for all input source files
   let baseDir: AbsolutePath
 
-  init(distributedBuildBaseDir: AbsolutePath) {
-    baseDir = distributedBuildBaseDir
+  // The client configuration
+  let clientConfig: ClientConfiguration
+
+  init(baseDir: AbsolutePath, clientConfigPath: AbsolutePath) throws {
+    self.baseDir = baseDir
+    self.clientConfig = try ClientConfiguration(file: clientConfigPath)
   }
 
   func remoteInputPath(localPath: AbsolutePath) -> RelativePath? {

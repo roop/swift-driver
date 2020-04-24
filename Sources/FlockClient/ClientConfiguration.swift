@@ -8,8 +8,11 @@
 //
 //===----------------------------------------------------------------------===//
 
+import TSCBasic
+
 public struct ClientConfiguration {
   // Unimplemented
-  public init() {
+  public init(file: AbsolutePath) throws {
+    // Unimplemented
   }
 }
