@@ -330,7 +330,7 @@ public struct Driver {
 
     if parsedOptions.contains(.distributed) {
       guard let cwd = localFileSystem.currentWorkingDirectory else {
-        fatalError("Can't get current working directory")
+        throw FileSystemError.noCurrentWorkingDirectory
       }
 
       let baseDirStr = parsedOptions.getLastArgument(
