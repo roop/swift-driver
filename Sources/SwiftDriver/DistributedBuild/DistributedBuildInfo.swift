@@ -49,7 +49,7 @@ public struct DistributedBuildInfo {
 
   init(baseDir: AbsolutePath, clientConfigPath: AbsolutePath) throws {
     self.baseDir = baseDir
-    self.clientConfig = try ClientConfiguration(file: clientConfigPath)
+    self.clientConfig = try ClientConfiguration.fromFile(clientConfigPath)
   }
 
   func remoteInputPath(localPath: AbsolutePath) -> RelativePath? {

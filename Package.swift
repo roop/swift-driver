@@ -63,7 +63,7 @@ let package = Package(
     /// Flock client
     .target(
       name: "FlockClient",
-      dependencies: ["SwiftToolsSupport-auto"]),
+      dependencies: ["SwiftToolsSupport-auto", "Yams"]),
     .testTarget(
       name: "FlockClientTests",
       dependencies: ["FlockClient"]),
