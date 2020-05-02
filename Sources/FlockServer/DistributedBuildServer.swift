@@ -11,7 +11,23 @@
 import TSCBasic
 
 public class DistributedBuildServer {
-  public var text = "Hello, World!"
-  public init() {
+  public var swiftPathsByVersionString: [String: AbsolutePath]
+
+  public init(serverConfiguration config: ServerConfiguration) throws {
+    self.swiftPathsByVersionString =
+      try mapSwiftPathsByVersion(config.swiftCompilerFrontends)
   }
+}
+
+private func mapSwiftPathsByVersion(_ swiftPaths: [AbsolutePath]) throws
+  -> [String: AbsolutePath] {
+    var map: [String: AbsolutePath] = [:]
+    for swiftPath in swiftPaths {
+      let versionStr = try Process.checkNonZeroExit(args: swiftPath.pathString,
+                                                    "--version")
+      if map[versionStr] == nil {
+        map[versionStr] = swiftPath
+      }
+    }
+    return map
 }
