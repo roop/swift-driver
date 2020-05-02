@@ -13,8 +13,30 @@ import XCTest
 
 final class FlockClientTests: XCTestCase {
 
-  func testFlockClient() {
-    let client = DistributedBuildClient()
-    XCTAssertEqual(client.text, "Hello, World!")
+  func testClientConfigParsing() throws {
+    let str = """
+      # Flock client config
+      servers:
+        - { host: "127.0.0.1", port: 8000 }
+        - { host: "::1", port: 8002 }
+        - host: "localhost"
+          port: 8003
+          timeout_seconds: 25
+      default_timeout_seconds: 60
+      """
+
+    let config = try ClientConfiguration.fromContents(str)
+
+    XCTAssertEqual(config.servers[0].host, "127.0.0.1")
+    XCTAssertEqual(config.servers[0].port, 8000)
+    XCTAssertEqual(config.servers[0].timeoutSeconds, 60)
+
+    XCTAssertEqual(config.servers[1].host, "::1")
+    XCTAssertEqual(config.servers[1].port, 8002)
+    XCTAssertEqual(config.servers[1].timeoutSeconds, 60)
+
+    XCTAssertEqual(config.servers[2].host, "localhost")
+    XCTAssertEqual(config.servers[2].port, 8003)
+    XCTAssertEqual(config.servers[2].timeoutSeconds, 25)
   }
 }

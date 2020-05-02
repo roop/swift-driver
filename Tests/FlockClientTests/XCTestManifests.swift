@@ -6,7 +6,7 @@ extension FlockClientTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__FlockClientTests = [
-        ("testFlockClient", testFlockClient),
+        ("testClientConfigParsing", testClientConfigParsing),
     ]
 }
 
