@@ -74,7 +74,7 @@ let package = Package(
     /// Flock server
     .target(
       name: "FlockServer",
-      dependencies: ["SwiftToolsSupport-auto"]),
+      dependencies: ["SwiftToolsSupport-auto", "Yams"]),
     .testTarget(
       name: "FlockServerTests",
       dependencies: ["FlockServer"]),
