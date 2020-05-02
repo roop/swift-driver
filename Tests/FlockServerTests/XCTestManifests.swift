@@ -6,7 +6,7 @@ extension FlockServerTests {
     //   `swift test --generate-linuxmain`
     // to regenerate.
     static let __allTests__FlockServerTests = [
-        ("testFlockServer", testFlockServer),
+        ("testServerConfigParsing", testServerConfigParsing),
     ]
 }
 

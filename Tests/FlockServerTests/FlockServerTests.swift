@@ -9,12 +9,36 @@
 //===----------------------------------------------------------------------===//
 
 import FlockServer
+import TSCBasic
 import XCTest
 
 final class FlockServerTests: XCTestCase {
 
-  func testFlockServer() {
-    let server = DistributedBuildServer()
-    XCTAssertEqual(server.text, "Hello, World!")
+  func testServerConfigParsing() throws {
+    let str = """
+      # Flock server config
+      swift_compiler_frontends:
+        - "/swift1"
+        - "/swift2"
+        - "/swift3"
+      sdks:
+        "MacOSX10.5" : "/path/to/macosx/10.5/sdk"
+        "MacOSX10.4" : "/path/to/macosx/10.4/sdk"
+      port: 8000
+      number_of_parallel_compilations: 1
+      """
+
+    let config = try ServerConfiguration.fromContents(str)
+    XCTAssertEqual(
+      config.swiftCompilerFrontends,
+      ["/swift1", "/swift2", "/swift3"].map { AbsolutePath($0) })
+    XCTAssertEqual(
+      config.sdks,
+      [
+        "MacOSX10.5" : AbsolutePath("/path/to/macosx/10.5/sdk"),
+        "MacOSX10.4" : AbsolutePath("/path/to/macosx/10.4/sdk")
+      ])
+    XCTAssertEqual(config.port, 8000)
+    XCTAssertEqual(config.numberOfParallelCompilations, 1)
   }
 }
