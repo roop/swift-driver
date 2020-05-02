@@ -22,6 +22,9 @@ let package = Package(
     .library(
       name: "FlockClient",
       targets: ["FlockClient"]),
+    .library(
+      name: "FlockServer",
+      targets: ["FlockServer"]),
   ],
   dependencies: [
     .package(url: "https://github.com/apple/swift-tools-support-core.git", .branch("master")),
@@ -67,6 +70,14 @@ let package = Package(
     .testTarget(
       name: "FlockClientTests",
       dependencies: ["FlockClient"]),
+
+    /// Flock server
+    .target(
+      name: "FlockServer",
+      dependencies: ["SwiftToolsSupport-auto"]),
+    .testTarget(
+      name: "FlockServerTests",
+      dependencies: ["FlockServer"]),
   ],
   cxxLanguageStandard: .cxx14
 )
