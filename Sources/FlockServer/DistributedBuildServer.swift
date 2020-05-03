@@ -9,14 +9,23 @@
 //===----------------------------------------------------------------------===//
 
 import TSCBasic
+import NIO
 
 public class DistributedBuildServer {
-  public var swiftPathsByVersionString: [String: AbsolutePath]
+  private let group: MultiThreadedEventLoopGroup
+  private let config: ServerConfiguration
 
-  public init(serverConfiguration config: ServerConfiguration) throws {
+  private let swiftPathsByVersionString: [String: AbsolutePath]
+
+  public init(group: MultiThreadedEventLoopGroup, config: ServerConfiguration) throws {
+    self.group = group
+    self.config = config
     self.swiftPathsByVersionString =
       try mapSwiftPathsByVersion(config.swiftCompilerFrontends)
   }
+
+  // public func start() -> EventLoopFuture<DistributedBuildServer> {
+  // }
 }
 
 private func mapSwiftPathsByVersion(_ swiftPaths: [AbsolutePath]) throws

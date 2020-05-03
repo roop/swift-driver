@@ -33,6 +33,7 @@ let package = Package(
     .package(url: "https://github.com/apple/swift-tools-support-core.git", .branch("master")),
     .package(url: "https://github.com/apple/swift-llbuild.git", .branch("master")),
     .package(url: "https://github.com/jpsim/Yams.git", .branch("master")),
+    .package(url: "https://github.com/apple/swift-nio", from: "2.0.0"),
   ],
   targets: [
     /// The driver library.
@@ -77,7 +78,7 @@ let package = Package(
     /// Flock server
     .target(
       name: "FlockServer",
-      dependencies: ["SwiftToolsSupport-auto", "Yams"]),
+      dependencies: ["SwiftToolsSupport-auto", "Yams", "NIO"]),
     .target(
       name: "flock-server",
       dependencies: ["FlockServer"]),
